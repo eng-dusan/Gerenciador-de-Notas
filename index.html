@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Notas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            color: #00acc1;
+        }
+
+        .overlay {
+            background: rgba(50, 50, 50, 0.8);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .note-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .note {
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px;
+            width: 300px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .note:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+        }
+
+        button {
+            background-color: #00acc1;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            padding: 8px 12px;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+        }
+
+        button:hover {
+            background-color: #008c9e;
+        }
+
+        input {
+            padding: 10px;
+            width: 300px;
+            margin: 10px;
+            border: 2px solid #424242;
+            border-radius: 5px;
+            outline: none;
+            font-size: 16px;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+        }
+
+        input:focus {
+            border: 2px solid #00acc1;
+            background-color: #2a2a2a;
+            color: #ffffff;
+        }
+
+        .icon-container {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay">
+        <h1>Gerenciador de Notas</h1>
+        <div class="note-container" id="noteContainer"></div>
+        <input type="text" id="noteInput" placeholder="Digite sua nota aqui..." autofocus>
+        <button id="new-note">Adicionar Nota</button>
+    </div>
+
+    <script>
+        const noteContainer = document.getElementById('noteContainer');
+        const noteInput = document.getElementById('noteInput');
+        const newNoteButton = document.getElementById('new-note');
+        let editingNote = null;
+        let notes = [];
+
+        window.electron.loadNotes().then((loadedNotes) => {
+            notes = loadedNotes;
+            renderNotes();
+        }).catch((err) => {
+            console.error("Erro ao carregar notas:", err);
+        });
+
+        function renderNotes() {
+            noteContainer.innerHTML = '';
+            notes.forEach((noteText) => {
+                createNoteElement(noteText);
+            });
+        }
+
+        function createNoteElement(noteText) {
+            const noteDiv = document.createElement('div');
+            noteDiv.className = 'note';
+            noteDiv.innerText = noteText;
+
+            const iconContainer = document.createElement('div');
+            iconContainer.className = 'icon-container';
+
+            const editButton = document.createElement('button');
+            editButton.innerHTML = '<i class="fas fa-edit"></i>';
+            editButton.onclick = () => {
+                noteInput.value = noteText;
+                editingNote = noteText;
+                noteInput.focus();
+            };
+
+            const deleteButton = document.createElement('button');
+            deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            deleteButton.onclick = () => {
+                const confirmDelete = confirm("Tem certeza que deseja remover esta nota?");
+                if (confirmDelete) {
+                    notes = notes.filter(note => note !== noteText);
+                    renderNotes();
+                    saveNotes();
+                    noteInput.focus();
+                }
+            };
+
+            iconContainer.appendChild(editButton);
+            iconContainer.appendChild(deleteButton);
+            noteDiv.appendChild(iconContainer);
+            noteContainer.appendChild(noteDiv);
+        }
+
+        newNoteButton.addEventListener('click', () => {
+            const noteText = noteInput.value.trim();
+            if (noteText) {
+                if (editingNote) {
+                    notes = notes.map(note => (note === editingNote ? noteText : note));
+                    editingNote = null;
+                } else {
+                    notes.push(noteText);
+                }
+                renderNotes();
+                noteInput.value = '';
+                noteInput.focus();
+                saveNotes();
+            } else {
+                alert("Por favor, insira uma nota!");
+            }
+        });
+
+        function saveNotes() {
+            window.electron.saveNotes(notes).catch((err) => {
+                console.error("Erro ao salvar notas:", err);
+            });
+        }
+
+        window.onload = () => {
+            noteInput.focus();
+        };
+    </script>    
+</body>
+</html>
